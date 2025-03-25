@@ -1,0 +1,9 @@
+%%%% To generate figure 3(a), 3(b), 3(c), 3(d) 	=> Run figure3.m
+%%%% To generate figure 4(a), 4(b), 4(c) 		=> Run figure4.m
+%%%% To generate figure 5(a), 5(b), 5(c) 		=> Run figure5.m
+%%%% To generate figure 6(a), 6(b), 6(c) 		=> Run figure6.m
+%%%% For proof that the SVM Bank is working, 	=> Run figure7.m => Very close performance to optimal Detector
+%%%%
+%%%% For information on how the functions work, type help <function name>
+%%%% For BER calculations, N = 10000 with 1000 iterations are chosen.
+%%%% For Decision Boundary plotting, N = 1000 is chosen for clear figures.

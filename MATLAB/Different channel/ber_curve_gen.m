@@ -1,0 +1,96 @@
+clc
+clearvars
+% close all
+
+%Signal and channel parameters
+N = 1000;
+%Channel for training data
+h_train = [1 0.6];
+poly_coeff_train = [1 0 -0.5];
+%Channel for training data
+h_test = [1 0.6];
+poly_coeff_test = [1 0 -0.2];
+signal_to_noise = 15;
+
+niter = 1;
+fprintf("Running for SNR: %d\n", signal_to_noise)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%% Train an SVM model using these parameters 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% The train_svm_model trains an SVM model using the 
+% signal and channel parameters and saves the trianed
+% SVM model in SVMModels variable file.
+train_svm_model(N, h_train, poly_coeff_train, signal_to_noise, 'plot');
+
+load SVMModels
+SVM_errs = 0;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%% TRANSMITTER SECTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Generate random bits
+bits = randi([0 1], N, 1);
+
+%BPSK Modulation
+u = 2*(bits-0.5);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%% CHANNEL SECTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Convolution with channel coefficients
+u_n = u(1:end-1);
+u_n_1 = u(2:end);
+
+x_tl = u_n.*h_test(1) + u_n_1.*h_test(2);
+
+%Multiplication with channel polynomial coefficients
+x_hat = zeros(size(x_tl));
+for i = 1:length(x_tl)
+    temp = 0;
+    for j = 1:length(poly_coeff_test)
+        temp = temp + poly_coeff_test(j)*x_tl(i)^j;
+    end
+    x_hat(i) = temp;
+end
+
+%Additive white gaussian noise
+y = awgn(x_hat, signal_to_noise, 'measured');
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%% RECEIVER SECTION 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%% SVM Detector         
+%Load trained SVM model
+classes = size(SVMModels,1);
+
+%Create SVM test variable
+y_n = y(1:end-1);
+y_n_1 = y(2:end);
+X = [y_n y_n_1];
+
+%Equalize with trained SVM model
+Scores = zeros(size(X,1),classes);
+for j = 1:classes
+    [~,score] = predict(SVMModels{j},X);
+    Scores(:,j) = score(:,2); % Second column contains positive-class scores
+end
+
+[~,maxScore] = max(Scores,[],2);
+bits_tl = maxScore - 1;
+
+%BER calculation
+SVM_errs = SVM_errs + sum(bits_tl~=bits(1:length(bits_tl)))/niter;
+
+BER_SVM = SVM_errs/length(bits_tl)
+
+plot_decision_boundary(y, u, SVMModels)
+
+
+
+
+
